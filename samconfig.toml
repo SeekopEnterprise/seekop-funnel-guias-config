@@ -1,0 +1,17 @@
+# More information about the configuration file can be found here:
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-config.html
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "GUIASFUNNEL-dev"
+s3_bucket = "sicop-apps"
+s3_prefix = "GUIASFUNNEL-dev"
+region = "us-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+no_verify_ssl = true

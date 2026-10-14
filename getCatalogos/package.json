@@ -1,0 +1,15 @@
+{
+  "name": "get-catalogos",
+  "version": "1.0.0",
+  "description": "Catalogo de marcas o grupos desde dwhrealtime.dim_distribuidores",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["GuiasFunnel", "catalogos", "marcas", "grupos", "get"],
+  "author": "Daniel Nava Sanchez <daniel.nava@seekop.com>",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.13.3"
+  }
+}

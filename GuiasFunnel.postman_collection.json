@@ -1,0 +1,193 @@
+{
+  "info": {
+    "name": "GuiasFunnel",
+    "description": "API para lectura y modificacion de la tabla funnelguias en Redshift",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.sicopweb.com/guiasfunnel-dev",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "TU_TOKEN_AQUI",
+      "type": "string"
+    },
+    {
+      "key": "cliente",
+      "value": "ford",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET Todas las guias",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/guias?cliente={{cliente}}",
+          "host": ["{{base_url}}"],
+          "path": ["guias"],
+          "query": [
+            {
+              "key": "cliente",
+              "value": "{{cliente}}",
+              "description": "Nombre del cliente (ej: ford, chevy). Se convierte a dwhford, dwhchevy, etc."
+            }
+          ]
+        },
+        "description": "Obtiene todas las guias del funnel para el cliente especificado. Ejecuta: SELECT idguia, tipocontacto, indicador, guia, orden, puntos FROM dwh{cliente}.funnelguias ORDER BY orden ASC"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": "[\n  {\n    \"idguia\": 1,\n    \"tipocontacto\": \"email\",\n    \"indicador\": \"apertura\",\n    \"guia\": \"Guia de bienvenida\",\n    \"orden\": 1,\n    \"puntos\": 10\n  },\n  {\n    \"idguia\": 2,\n    \"tipocontacto\": \"sms\",\n    \"indicador\": \"click\",\n    \"guia\": \"Guia de seguimiento\",\n    \"orden\": 2,\n    \"puntos\": 20\n  }\n]"
+        },
+        {
+          "name": "400 cliente faltante",
+          "status": "Bad Request",
+          "code": 400,
+          "body": "{\n  \"code\": 400,\n  \"type\": \"BadRequest\",\n  \"message\": \"El parametro cliente es requerido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "POST Crear guia",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cliente\": \"{{cliente}}\",\n  \"tipocontacto\": \"email\",\n  \"indicador\": \"apertura\",\n  \"guia\": \"Nueva guia\",\n  \"orden\": 1,\n  \"puntos\": 10\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/guias",
+          "host": ["{{base_url}}"],
+          "path": ["guias"]
+        },
+        "description": "Crea una nueva guia en dwh{cliente}.funnelguias. Campos requeridos: cliente, tipocontacto, indicador, guia, orden, puntos."
+      },
+      "response": [
+        {
+          "name": "201 Created",
+          "status": "Created",
+          "code": 201,
+          "body": "{\n  \"id\": 3,\n  \"type\": \"FUNNELGUIA\",\n  \"action\": \"CREATE\",\n  \"status\": \"Successful\",\n  \"data\": {\n    \"idguia\": 3,\n    \"tipocontacto\": \"email\",\n    \"indicador\": \"apertura\",\n    \"guia\": \"Nueva guia\",\n    \"orden\": 1,\n    \"puntos\": 10\n  }\n}"
+        },
+        {
+          "name": "400 campo faltante",
+          "status": "Bad Request",
+          "code": 400,
+          "body": "{\n  \"code\": 400,\n  \"type\": \"BadRequest\",\n  \"message\": \"El campo puntos es requerido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "PUT Actualizar guia",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cliente\": \"{{cliente}}\",\n  \"tipocontacto\": \"email\",\n  \"indicador\": \"click\",\n  \"guia\": \"Guia actualizada\",\n  \"orden\": 1,\n  \"puntos\": 15\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/guias/1",
+          "host": ["{{base_url}}"],
+          "path": ["guias", "1"]
+        },
+        "description": "Actualiza una guia existente por su idguia. El idguia va en la URL. Todos los campos son requeridos en el body."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"id\": \"1\",\n  \"type\": \"FUNNELGUIA\",\n  \"action\": \"UPDATE\",\n  \"status\": \"Successful\",\n  \"message\": \"Guia actualizada exitosamente\"\n}"
+        },
+        {
+          "name": "404 no encontrada",
+          "status": "Not Found",
+          "code": 404,
+          "body": "{\n  \"code\": 404,\n  \"type\": \"NotFound\",\n  \"message\": \"Guia con id 1 no encontrada\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "DELETE Eliminar guia",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/guias/1?cliente={{cliente}}",
+          "host": ["{{base_url}}"],
+          "path": ["guias", "1"],
+          "query": [
+            {
+              "key": "cliente",
+              "value": "{{cliente}}"
+            }
+          ]
+        },
+        "description": "Elimina una guia por su idguia. El idguia va en la URL y el cliente como query parameter."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": "{\n  \"id\": \"1\",\n  \"type\": \"FUNNELGUIA\",\n  \"action\": \"DELETE\",\n  \"status\": \"Successful\",\n  \"message\": \"Guia eliminada exitosamente\"\n}"
+        },
+        {
+          "name": "404 no encontrada",
+          "status": "Not Found",
+          "code": 404,
+          "body": "{\n  \"code\": 404,\n  \"type\": \"NotFound\",\n  \"message\": \"Guia con id 1 no encontrada\"\n}"
+        }
+      ]
+    }
+  ]
+}
