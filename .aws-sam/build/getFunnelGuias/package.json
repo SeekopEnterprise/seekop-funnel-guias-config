@@ -1,0 +1,15 @@
+{
+  "name": "get-funnel-guias",
+  "version": "1.0.0",
+  "description": "Lista todas las guias del funnel para un cliente",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["GuiasFunnel", "funnel", "guias", "get"],
+  "author": "Daniel Nava Sanchez <daniel.nava@seekop.com>",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.13.3"
+  }
+}

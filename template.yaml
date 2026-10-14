@@ -1,0 +1,316 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  GuiasFunnel
+
+  API para lectura y modificacion de la tabla funnelguias en Redshift
+
+Parameters:
+  Stage:
+    Type: String
+    Default: 'dev'
+    AllowedPattern: .+
+    ConstraintDescription: 'Stage es obligatorio'
+  DomainName:
+    Type: String
+    Default: 'api.sicopweb.com'
+  basePath:
+    Type: String
+    Default: 'guiasfunnel'
+
+Globals:
+  Function:
+    Timeout: 15
+    Runtime: nodejs22.x
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        APIGATEWAY_ID: pw3rt09zf9
+        REDSHIFT_HOST: 'sicop-ba.ci43gmrbpmdv.us-west-1.redshift.amazonaws.com'
+        REDSHIFT_PORT: '5439'
+        REDSHIFT_DATABASE: 'dwh'
+        REDSHIFT_USER: 'lambda_user_config_bi'
+        REDSHIFT_PASSWORD: 'XEqQbtnQL5EXbycG'
+        HEADERS: '{"Access-Control-Allow-Headers": "*", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "*"}'
+
+Resources:
+  APILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub 'API-GUIASFUNNEL-${Stage}'
+
+  APIResource:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'GUIASFUNNEL-${Stage}'
+      Description: API para gestion de guias del funnel en Redshift
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+      AccessLogSetting:
+        DestinationArn: !GetAtt APILogGroup.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "caller":"$context.identity.caller", "user":"$context.identity.user","requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
+      GatewayResponses:
+        ACCESS_DENIED:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 403, "type" : "AccessDenied", "message" : $context.error.messageString }'
+        API_CONFIGURATION_ERROR:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 500, "type" : "APIConfigError", "message" : $context.error.messageString }'
+        AUTHORIZER_CONFIGURATION_ERROR:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 500, "type" : "InternalError", "message" : "Invalid Token" }'
+        AUTHORIZER_FAILURE:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 500, "type" : "AuthorizerFailure", "message" : $context.error.messageString }'
+        BAD_REQUEST_PARAMETERS:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 400, "type" : "BadRequestParameters", "message" : $context.error.messageString }'
+        BAD_REQUEST_BODY:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 400, "type" : "BadRequestBody", "message" : $context.error.messageString }'
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 400, "type" : "BadRequest", "message" : "Invalid Resource" }'
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 500, "type" : "InternalError", "message" : $context.error.messageString }'
+        EXPIRED_TOKEN:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 403, "type" : "ExpiredToken", "message" : $context.error.messageString }'
+        INTEGRATION_FAILURE:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 504, "type" : "IntegrationFailure", "message" : $context.error.messageString }'
+        INTEGRATION_TIMEOUT:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 504, "type" : "IntegrationTimeout", "message" : $context.error.messageString }'
+        INVALID_API_KEY:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 403, "type" : "InvalidAPIKey", "message" : $context.error.messageString }'
+        MISSING_AUTHENTICATION_TOKEN:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 403, "type" : "MissingAuthenticationToken", "message" : $context.error.messageString }'
+        UNAUTHORIZED:
+          ResponseParameters:
+            Headers:
+              "Access-Control-Allow-Origin": "'*'"
+              "Access-Control-Allow-Headers": "'*'"
+          ResponseTemplates:
+            "application/json": '{ "code" : 401, "type" : "Unauthorized", "message" : $context.error.messageString }'
+      Auth:
+        Authorizers:
+          SICOPAUTHCUSTOM:
+            FunctionPayloadType: REQUEST
+            FunctionArn: arn:aws:lambda:us-west-1:626929863638:function:SICOPAUTH-customauthenticator:prod
+            Identity:
+              Headers:
+                - Authorization
+        AddDefaultAuthorizerToCorsPreflight: false
+
+  APIBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      BasePath: !Sub '${basePath}-${Stage}'
+      DomainName: !Ref DomainName
+      RestApiId: !Ref APIResource
+      Stage: !Ref APIResource.Stage
+
+  getFunnelGuias:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: getFunnelGuias/.
+      Handler: index.handler
+      Description: Obtiene todas las guias del funnel para un cliente
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0b4bedc212987386d
+        SubnetIds:
+          - subnet-02ca0795838434b48
+          - subnet-0b17e0fe0e12f3b23
+      Layers:
+        - arn:aws:lambda:us-west-1:626929863638:layer:SEEKOPAUTH-common:68
+      Events:
+        getFunnelGuias:
+          Type: Api
+          Properties:
+            Path: /guias
+            Method: get
+            Auth:
+              Authorizer: SICOPAUTHCUSTOM
+            RestApiId: !Ref APIResource
+
+  postFunnelGuia:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: postFunnelGuia/.
+      Handler: index.handler
+      Description: Crea una nueva guia del funnel
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0b4bedc212987386d
+        SubnetIds:
+          - subnet-02ca0795838434b48
+          - subnet-0b17e0fe0e12f3b23
+      Layers:
+        - arn:aws:lambda:us-west-1:626929863638:layer:SEEKOPAUTH-common:68
+      Events:
+        postFunnelGuia:
+          Type: Api
+          Properties:
+            Path: /guias
+            Method: post
+            Auth:
+              Authorizer: SICOPAUTHCUSTOM
+            RestApiId: !Ref APIResource
+
+  putFunnelGuia:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: putFunnelGuia/.
+      Handler: index.handler
+      Description: Actualiza una guia del funnel existente
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0b4bedc212987386d
+        SubnetIds:
+          - subnet-02ca0795838434b48
+          - subnet-0b17e0fe0e12f3b23
+      Layers:
+        - arn:aws:lambda:us-west-1:626929863638:layer:SEEKOPAUTH-common:68
+      Events:
+        putFunnelGuia:
+          Type: Api
+          Properties:
+            Path: /guias/{idguia}
+            Method: put
+            Auth:
+              Authorizer: SICOPAUTHCUSTOM
+            RestApiId: !Ref APIResource
+
+  deleteFunnelGuia:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deleteFunnelGuia/.
+      Handler: index.handler
+      Description: Elimina una guia del funnel
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0b4bedc212987386d
+        SubnetIds:
+          - subnet-02ca0795838434b48
+          - subnet-0b17e0fe0e12f3b23
+      Layers:
+        - arn:aws:lambda:us-west-1:626929863638:layer:SEEKOPAUTH-common:68
+      Events:
+        deleteFunnelGuia:
+          Type: Api
+          Properties:
+            Path: /guias/{idguia}
+            Method: delete
+            Auth:
+              Authorizer: SICOPAUTHCUSTOM
+            RestApiId: !Ref APIResource
+
+  getCatalogos:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: getCatalogos/.
+      Handler: index.handler
+      Description: Catalogo de marcas o grupos desde dwhrealtime.dim_distribuidores
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0b4bedc212987386d
+        SubnetIds:
+          - subnet-02ca0795838434b48
+          - subnet-0b17e0fe0e12f3b23
+      Layers:
+        - arn:aws:lambda:us-west-1:626929863638:layer:SEEKOPAUTH-common:68
+      Events:
+        getCatalogos:
+          Type: Api
+          Properties:
+            Path: /catalogos
+            Method: get
+            Auth:
+              Authorizer: SICOPAUTHCUSTOM
+            RestApiId: !Ref APIResource
+
+Outputs:
+  APIResource:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${DomainName}/${basePath}-${Stage}/"
+  getFunnelGuias:
+    Description: "Lista todas las guias del funnel"
+    Value: !GetAtt getFunnelGuias.Arn
+  postFunnelGuia:
+    Description: "Crea una nueva guia"
+    Value: !GetAtt postFunnelGuia.Arn
+  putFunnelGuia:
+    Description: "Actualiza una guia"
+    Value: !GetAtt putFunnelGuia.Arn
+  deleteFunnelGuia:
+    Description: "Elimina una guia"
+    Value: !GetAtt deleteFunnelGuia.Arn
+  getCatalogos:
+    Description: "Catalogo de marcas o grupos"
+    Value: !GetAtt getCatalogos.Arn
