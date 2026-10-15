@@ -2,6 +2,9 @@ $BUCKET = "guias-dev.sicopweb.com"
 $CF_ID   = "E2BHL27O8OOO3K"
 $DIST    = "$PSScriptRoot\frontend\dist"
 
+# URL de la API del ambiente; se incrusta en el build
+$env:VITE_API_URL = "https://api.sicopweb.com/guiasfunnel-dev"
+
 Write-Host "==> Build..."
 Set-Location "$PSScriptRoot\frontend"
 npm run build
@@ -18,6 +21,6 @@ Write-Host "==> Invalidando CloudFront ($CF_ID)..."
 aws cloudfront create-invalidation --distribution-id $CF_ID --paths "/*"
 
 Write-Host "==> Listo."
-Write-Host "    GuiasFunnel SPA : https://guias-dev.sicopweb.com"
-Write-Host "    Parent demo app : https://guias-dev.sicopweb.com/index-parent.html"
+Write-Host "    URL del modulo en Orbit : https://guias-dev.sicopweb.com/index-parent.html"
+Write-Host "    (GuiasFunnel SPA embebida: https://guias-dev.sicopweb.com/index.html)"
 Set-Location $PSScriptRoot

@@ -2,6 +2,23 @@ const { Client } = require('pg');
 const { APIResponse, APIGatewayResponse } = require('sicop/common');
 
 const HEADERS = JSON.parse(process.env.HEADERS);
+const REQUIRED_SCOPE = process.env.REQUIRED_SCOPE;
+
+// El authorizer de Orbit entrega los permisos del usuario como JSON en base64.
+// Si no se pueden leer se tratan como vacios: sin permiso no hay acceso.
+function getScopes(event) {
+    const authorizer = (event.requestContext && event.requestContext.authorizer) || {};
+    try {
+        const scopes = JSON.parse(Buffer.from(authorizer.scopes || '', 'base64').toString('utf8'));
+        return Array.isArray(scopes) ? scopes : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function forbidden() {
+    return new APIGatewayResponse(403, JSON.stringify(new APIResponse(403, 'Forbidden', `No tienes el permiso ${REQUIRED_SCOPE}`)), HEADERS);
+}
 
 // Columna de dim_distribuidores por tipo de catalogo. La columna nunca viene
 // del request directamente: solo se aceptan las llaves de este mapa.
@@ -55,6 +72,10 @@ async function leerCatalogo(columna) {
 }
 
 exports.handler = async (event) => {
+    if (!getScopes(event).includes(REQUIRED_SCOPE)) {
+        return forbidden();
+    }
+
     const tipo = ((event.queryStringParameters && event.queryStringParameters.tipo) || '').toLowerCase();
     const columna = COLUMNAS[tipo];
     if (!columna) {
