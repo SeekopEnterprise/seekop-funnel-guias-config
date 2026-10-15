@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from './Modal.jsx'
 import './Modal.css'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.sicopweb.com/guiasfunnel-dev'
+import { apiFetch, isSessionError } from './api.js'
 
 const INDICADOR_DISPLAY = { gestionables: 'efectivos', efectivas: 'shows' }
 const INDICADOR_REVERSE = { efectivos: 'gestionables', shows: 'efectivas' }
@@ -49,22 +48,30 @@ export default function App() {
   }
   function closeModal() { setModal({ open: false }) }
 
-  // ── Auth desde padre ──
-  function authHeaders() {
-    return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-  }
-
+  // ── Sesión de Orbit desde el padre ──
+  // El padre se sirve en el mismo dominio; solo se aceptan mensajes de ese origen.
   useEffect(() => {
     function onMessage(e) {
+      if (e.origin !== window.location.origin || e.source !== window.parent) return
       const { type, token: t, cliente: c } = e.data || {}
       if (type !== 'GUIAS_FUNNEL_INIT') return
       if (t) setToken(t)
       if (c) setCliente(c)
     }
     window.addEventListener('message', onMessage)
-    window.parent.postMessage({ type: 'GUIAS_FUNNEL_READY' }, '*')
+    window.parent.postMessage({ type: 'GUIAS_FUNNEL_READY' }, window.location.origin)
     return () => window.removeEventListener('message', onMessage)
   }, [])
+
+  // Token rechazado por el authorizer: el padre cierra la sesión y pide reabrir desde Orbit
+  function handleError(e) {
+    if (isSessionError(e)) {
+      setToken('')
+      window.parent.postMessage({ type: 'GUIAS_FUNNEL_SESSION_EXPIRED' }, window.location.origin)
+      return
+    }
+    toast(e.message, 'error')
+  }
 
   // ── Carga guías + catálogo de indicadores ──
   const loadGuias = useCallback(async (tkn, cli) => {
@@ -73,11 +80,7 @@ export default function App() {
     setRows([])
     setDirty(new Set())
     try {
-      const res  = await fetch(`${API_BASE}/guias?cliente=${cli}`, {
-        headers: { 'Authorization': `Bearer ${tkn}`, 'Content-Type': 'application/json' }
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Error al cargar')
+      const data = await apiFetch(`/guias?cliente=${encodeURIComponent(cli)}`, tkn)
       setRows(
         [...data.guias]
           .sort((a, b) => a.idguia - b.idguia)
@@ -85,7 +88,7 @@ export default function App() {
       )
       setConfigOptions(data.indicadores || {})
     } catch (e) {
-      toast(e.message, 'error')
+      handleError(e)
     } finally {
       setLoading(false)
     }
@@ -119,12 +122,11 @@ export default function App() {
       const guia  = row.guia === '' || row.guia === null || row.guia === undefined ? 0 : Number(row.guia)
       const body  = { cliente, tipocontacto: row.tipocontacto, indicador: row.indicador, guia, orden: Number(row.orden), puntos: Number(row.puntos) }
       const isNew = row.idguia < 0
-      const res   = await fetch(
-        isNew ? `${API_BASE}/guias` : `${API_BASE}/guias/${row.idguia}`,
-        { method: isNew ? 'POST' : 'PUT', headers: authHeaders(), body: JSON.stringify(body) }
+      const data  = await apiFetch(
+        isNew ? '/guias' : `/guias/${encodeURIComponent(row.idguia)}`,
+        token,
+        { method: isNew ? 'POST' : 'PUT', body }
       )
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message)
       if (isNew && data.data) {
         const saved = { ...data.data, guia: data.data.guia != null ? Math.round(parseFloat(data.data.guia)) : 0 }
         setRows(prev => prev.map(r => r.idguia === row.idguia ? saved : r))
@@ -132,7 +134,7 @@ export default function App() {
       setDirty(prev => { const s = new Set(prev); s.delete(row.idguia); return s })
       return true
     } catch (e) {
-      toast(e.message, 'error')
+      handleError(e)
       return false
     } finally {
       setSaving(prev => { const s = new Set(prev); s.delete(row.idguia); return s })
@@ -174,13 +176,11 @@ export default function App() {
           return
         }
         try {
-          const res  = await fetch(`${API_BASE}/guias/${row.idguia}?cliente=${cliente}`, { method: 'DELETE', headers: authHeaders() })
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.message)
+          await apiFetch(`/guias/${encodeURIComponent(row.idguia)}?cliente=${encodeURIComponent(cliente)}`, token, { method: 'DELETE' })
           setRows(prev => prev.filter(r => r.idguia !== row.idguia))
           toast('Guia eliminada correctamente')
         } catch (e) {
-          toast(e.message, 'error')
+          handleError(e)
         }
       }
     })
@@ -205,9 +205,13 @@ export default function App() {
             continue
           }
           try {
-            const res = await fetch(`${API_BASE}/guias/${row.idguia}?cliente=${cliente}`, { method: 'DELETE', headers: authHeaders() })
-            if (res.ok) { ok++; setRows(prev => prev.filter(r => r.idguia !== row.idguia)) }
-          } catch {}
+            await apiFetch(`/guias/${encodeURIComponent(row.idguia)}?cliente=${encodeURIComponent(cliente)}`, token, { method: 'DELETE' })
+            ok++
+            setRows(prev => prev.filter(r => r.idguia !== row.idguia))
+          } catch (e) {
+            // Sin sesión o sin permiso no tiene caso seguir con las demás
+            if (isSessionError(e) || e.status === 403) { handleError(e); break }
+          }
         }
         toast(`${ok} guias eliminadas de ${filterTipo}`)
       }

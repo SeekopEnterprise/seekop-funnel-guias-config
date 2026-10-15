@@ -2,6 +2,23 @@ const { Client } = require('pg');
 const { APIResponse, APIGatewayResponse } = require('sicop/common');
 
 const HEADERS = JSON.parse(process.env.HEADERS);
+const REQUIRED_SCOPE = process.env.REQUIRED_SCOPE;
+
+// El authorizer de Orbit entrega los permisos del usuario como JSON en base64.
+// Si no se pueden leer se tratan como vacios: sin permiso no hay acceso.
+function getScopes(event) {
+    const authorizer = (event.requestContext && event.requestContext.authorizer) || {};
+    try {
+        const scopes = JSON.parse(Buffer.from(authorizer.scopes || '', 'base64').toString('utf8'));
+        return Array.isArray(scopes) ? scopes : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function forbidden() {
+    return new APIGatewayResponse(403, JSON.stringify(new APIResponse(403, 'Forbidden', `No tienes el permiso ${REQUIRED_SCOPE}`)), HEADERS);
+}
 
 function createClient() {
     return new Client({
@@ -70,6 +87,10 @@ async function postFunnelGuia(body) {
 }
 
 exports.handler = async (event) => {
+    if (!getScopes(event).includes(REQUIRED_SCOPE)) {
+        return forbidden();
+    }
+
     if (event.httpMethod !== 'POST') {
         return new APIGatewayResponse(405, JSON.stringify(new APIResponse(405, 'MethodNotAllowed', 'Solo metodo POST es soportado')), HEADERS);
     }

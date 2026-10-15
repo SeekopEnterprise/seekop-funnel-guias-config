@@ -11,9 +11,16 @@
       "type": "string"
     },
     {
+      "key": "code",
+      "value": "",
+      "type": "string",
+      "description": "Codigo de un solo uso (?code=) con el que Orbit abre la SPA. Expira en ~30 s."
+    },
+    {
       "key": "token",
-      "value": "TU_TOKEN_AQUI",
-      "type": "string"
+      "value": "",
+      "type": "string",
+      "description": "accessToken de Orbit. Se llena solo al ejecutar POST Canjear codigo de Orbit."
     },
     {
       "key": "cliente",
@@ -22,6 +29,45 @@
     }
   ],
   "item": [
+    {
+      "name": "POST Canjear codigo de Orbit",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) pm.collectionVariables.set(\"token\", pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"{{code}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/session/exchange",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "session",
+            "exchange"
+          ]
+        },
+        "description": "Canjea el codigo de lanzamiento de Orbit por el accessToken (sin authorizer). 400 sin codigo, 401 codigo invalido/expirado/consumido, 500 Orbit inaccesible."
+      },
+      "response": []
+    },
     {
       "name": "GET Todas las guias",
       "request": {
@@ -34,8 +80,12 @@
         ],
         "url": {
           "raw": "{{base_url}}/guias?cliente={{cliente}}",
-          "host": ["{{base_url}}"],
-          "path": ["guias"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "guias"
+          ],
           "query": [
             {
               "key": "cliente",
@@ -86,8 +136,12 @@
         },
         "url": {
           "raw": "{{base_url}}/guias",
-          "host": ["{{base_url}}"],
-          "path": ["guias"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "guias"
+          ]
         },
         "description": "Crea una nueva guia en dwh{cliente}.funnelguias. Campos requeridos: cliente, tipocontacto, indicador, guia, orden, puntos."
       },
@@ -131,8 +185,13 @@
         },
         "url": {
           "raw": "{{base_url}}/guias/1",
-          "host": ["{{base_url}}"],
-          "path": ["guias", "1"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "guias",
+            "1"
+          ]
         },
         "description": "Actualiza una guia existente por su idguia. El idguia va en la URL. Todos los campos son requeridos en el body."
       },
@@ -163,8 +222,13 @@
         ],
         "url": {
           "raw": "{{base_url}}/guias/1?cliente={{cliente}}",
-          "host": ["{{base_url}}"],
-          "path": ["guias", "1"],
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "guias",
+            "1"
+          ],
           "query": [
             {
               "key": "cliente",

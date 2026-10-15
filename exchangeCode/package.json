@@ -1,0 +1,12 @@
+{
+  "name": "exchange-code",
+  "version": "1.0.0",
+  "description": "Canjea el codigo de lanzamiento de Orbit por el accessToken",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["GuiasFunnel", "orbit", "session", "exchange"],
+  "author": "Daniel Nava Sanchez <daniel.nava@seekop.com>",
+  "license": "MIT"
+}

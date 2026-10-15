@@ -17,6 +17,30 @@ Parameters:
   basePath:
     Type: String
     Default: 'guiasfunnel'
+  WebDomainName:
+    Type: String
+    Default: 'guias-dev.sicopweb.com'
+    Description: Dominio donde se sirve la SPA; es el unico origen CORS permitido
+  OrbitExchangeCodeUrl:
+    Type: String
+    Default: 'https://devmty.sicopweb.com/seekop-orbit/api/auth/exchange-code'
+    Description: Endpoint exchange-code de Orbit del ambiente
+  OrbitModuleKey:
+    Type: String
+    Default: 'GUIAS_FUNNEL'
+    Description: module_key con el que el modulo esta dado de alta en Orbit
+  OrbitScopeVer:
+    Type: String
+    Default: 'GUIAS_FUNNEL_VER'
+    Description: Permiso de Orbit para consultar guias y catalogos
+  OrbitScopeEditar:
+    Type: String
+    Default: 'GUIAS_FUNNEL_EDITAR'
+    Description: Permiso de Orbit para crear, modificar y eliminar guias
+  OrbitAuthorizerArn:
+    Type: String
+    Default: 'arn:aws:lambda:us-west-1:626929863638:function:SICOPAUTH-orbitauthenticator:prod'
+    Description: Authorizer compartido de Orbit (mismo ARN en todos los ambientes)
 
 Globals:
   Function:
@@ -32,7 +56,7 @@ Globals:
         REDSHIFT_DATABASE: 'dwh'
         REDSHIFT_USER: 'lambda_user_config_bi'
         REDSHIFT_PASSWORD: 'XEqQbtnQL5EXbycG'
-        HEADERS: '{"Access-Control-Allow-Headers": "*", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "*"}'
+        HEADERS: !Sub '{"Access-Control-Allow-Headers": "Content-Type,Authorization", "Access-Control-Allow-Origin": "https://${WebDomainName}", "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE"}'
 
 Resources:
   APILogGroup:
@@ -47,9 +71,9 @@ Resources:
       Description: API para gestion de guias del funnel en Redshift
       StageName: !Ref Stage
       Cors:
-        AllowMethods: "'*'"
-        AllowHeaders: "'*'"
-        AllowOrigin: "'*'"
+        AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: !Sub "'https://${WebDomainName}'"
       AccessLogSetting:
         DestinationArn: !GetAtt APILogGroup.Arn
         Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "caller":"$context.identity.caller", "user":"$context.identity.user","requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
@@ -57,110 +81,114 @@ Resources:
         ACCESS_DENIED:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 403, "type" : "AccessDenied", "message" : $context.error.messageString }'
         API_CONFIGURATION_ERROR:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 500, "type" : "APIConfigError", "message" : $context.error.messageString }'
         AUTHORIZER_CONFIGURATION_ERROR:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 500, "type" : "InternalError", "message" : "Invalid Token" }'
         AUTHORIZER_FAILURE:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 500, "type" : "AuthorizerFailure", "message" : $context.error.messageString }'
         BAD_REQUEST_PARAMETERS:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 400, "type" : "BadRequestParameters", "message" : $context.error.messageString }'
         BAD_REQUEST_BODY:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 400, "type" : "BadRequestBody", "message" : $context.error.messageString }'
         DEFAULT_4XX:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
-            "application/json": '{ "code" : 400, "type" : "BadRequest", "message" : "Invalid Resource" }'
+            "application/json": '{ "code" : 400, "type" : "BadRequest", "message" : $context.error.messageString }'
         DEFAULT_5XX:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 500, "type" : "InternalError", "message" : $context.error.messageString }'
         EXPIRED_TOKEN:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 403, "type" : "ExpiredToken", "message" : $context.error.messageString }'
         INTEGRATION_FAILURE:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 504, "type" : "IntegrationFailure", "message" : $context.error.messageString }'
         INTEGRATION_TIMEOUT:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 504, "type" : "IntegrationTimeout", "message" : $context.error.messageString }'
         INVALID_API_KEY:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 403, "type" : "InvalidAPIKey", "message" : $context.error.messageString }'
         MISSING_AUTHENTICATION_TOKEN:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 403, "type" : "MissingAuthenticationToken", "message" : $context.error.messageString }'
         UNAUTHORIZED:
           ResponseParameters:
             Headers:
-              "Access-Control-Allow-Origin": "'*'"
-              "Access-Control-Allow-Headers": "'*'"
+              "Access-Control-Allow-Origin": !Sub "'https://${WebDomainName}'"
+              "Access-Control-Allow-Headers": "'Content-Type,Authorization'"
           ResponseTemplates:
             "application/json": '{ "code" : 401, "type" : "Unauthorized", "message" : $context.error.messageString }'
       Auth:
+        DefaultAuthorizer: OrbitAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
         Authorizers:
-          SICOPAUTHCUSTOM:
+          OrbitAuthorizer:
             FunctionPayloadType: REQUEST
-            FunctionArn: arn:aws:lambda:us-west-1:626929863638:function:SICOPAUTH-customauthenticator:prod
+            FunctionArn: !Ref OrbitAuthorizerArn
             Identity:
               Headers:
                 - Authorization
-        AddDefaultAuthorizerToCorsPreflight: false
+              ReauthorizeEvery: 0
+        # SAM genera el AWS::Lambda::Permission para invocar el authorizer
+        # (APIResourceOrbitAuthorizerAuthorizerPermission); no hace falta declararlo
 
   APIBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
@@ -170,12 +198,36 @@ Resources:
       RestApiId: !Ref APIResource
       Stage: !Ref APIResource.Stage
 
+  exchangeCode:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: exchangeCode/.
+      Handler: index.handler
+      Description: Canjea el codigo de lanzamiento de Orbit por el accessToken
+      Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
+      Environment:
+        Variables:
+          ORBIT_EXCHANGE_CODE_URL: !Ref OrbitExchangeCodeUrl
+          ORBIT_MODULE_KEY: !Ref OrbitModuleKey
+      Events:
+        exchangeCode:
+          Type: Api
+          Properties:
+            Path: /session/exchange
+            Method: post
+            Auth:
+              Authorizer: NONE
+            RestApiId: !Ref APIResource
+
   getFunnelGuias:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: getFunnelGuias/.
       Handler: index.handler
       Description: Obtiene todas las guias del funnel para un cliente
+      Environment:
+        Variables:
+          REQUIRED_SCOPE: !Ref OrbitScopeVer
       Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
       VpcConfig:
         SecurityGroupIds:
@@ -192,7 +244,7 @@ Resources:
             Path: /guias
             Method: get
             Auth:
-              Authorizer: SICOPAUTHCUSTOM
+              Authorizer: OrbitAuthorizer
             RestApiId: !Ref APIResource
 
   postFunnelGuia:
@@ -201,6 +253,9 @@ Resources:
       CodeUri: postFunnelGuia/.
       Handler: index.handler
       Description: Crea una nueva guia del funnel
+      Environment:
+        Variables:
+          REQUIRED_SCOPE: !Ref OrbitScopeEditar
       Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
       VpcConfig:
         SecurityGroupIds:
@@ -217,7 +272,7 @@ Resources:
             Path: /guias
             Method: post
             Auth:
-              Authorizer: SICOPAUTHCUSTOM
+              Authorizer: OrbitAuthorizer
             RestApiId: !Ref APIResource
 
   putFunnelGuia:
@@ -226,6 +281,9 @@ Resources:
       CodeUri: putFunnelGuia/.
       Handler: index.handler
       Description: Actualiza una guia del funnel existente
+      Environment:
+        Variables:
+          REQUIRED_SCOPE: !Ref OrbitScopeEditar
       Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
       VpcConfig:
         SecurityGroupIds:
@@ -242,7 +300,7 @@ Resources:
             Path: /guias/{idguia}
             Method: put
             Auth:
-              Authorizer: SICOPAUTHCUSTOM
+              Authorizer: OrbitAuthorizer
             RestApiId: !Ref APIResource
 
   deleteFunnelGuia:
@@ -251,6 +309,9 @@ Resources:
       CodeUri: deleteFunnelGuia/.
       Handler: index.handler
       Description: Elimina una guia del funnel
+      Environment:
+        Variables:
+          REQUIRED_SCOPE: !Ref OrbitScopeEditar
       Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
       VpcConfig:
         SecurityGroupIds:
@@ -267,7 +328,7 @@ Resources:
             Path: /guias/{idguia}
             Method: delete
             Auth:
-              Authorizer: SICOPAUTHCUSTOM
+              Authorizer: OrbitAuthorizer
             RestApiId: !Ref APIResource
 
   getCatalogos:
@@ -276,6 +337,9 @@ Resources:
       CodeUri: getCatalogos/.
       Handler: index.handler
       Description: Catalogo de marcas o grupos desde dwhrealtime.dim_distribuidores
+      Environment:
+        Variables:
+          REQUIRED_SCOPE: !Ref OrbitScopeVer
       Role: arn:aws:iam::626929863638:role/lambda-APIMAPEOMDM
       VpcConfig:
         SecurityGroupIds:
@@ -292,13 +356,16 @@ Resources:
             Path: /catalogos
             Method: get
             Auth:
-              Authorizer: SICOPAUTHCUSTOM
+              Authorizer: OrbitAuthorizer
             RestApiId: !Ref APIResource
 
 Outputs:
   APIResource:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${DomainName}/${basePath}-${Stage}/"
+  exchangeCode:
+    Description: "Canje del codigo de Orbit"
+    Value: !GetAtt exchangeCode.Arn
   getFunnelGuias:
     Description: "Lista todas las guias del funnel"
     Value: !GetAtt getFunnelGuias.Arn

@@ -4,6 +4,8 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // Assets con rutas relativas: la app funciona aunque se publique bajo un sub-path
+  base: './',
   build: {
     rollupOptions: {
       input: {
